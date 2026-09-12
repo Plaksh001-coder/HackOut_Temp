@@ -4,7 +4,6 @@ import {
   Bell,
   Calendar,
   Sparkles,
-  ChevronDown,
   RotateCcw,
   UserCheck
 } from 'lucide-react';

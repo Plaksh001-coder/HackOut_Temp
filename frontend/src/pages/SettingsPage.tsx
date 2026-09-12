@@ -15,6 +15,8 @@ export const SettingsPage: React.FC = () => {
   const {
     factory,
     updateFactoryProfile,
+    geography,
+    setGeography,
     currency,
     setCurrency,
     resetToDemo
@@ -85,9 +87,15 @@ export const SettingsPage: React.FC = () => {
               <label className="block text-xs font-bold text-forest-900 uppercase tracking-wide mb-1.5">
                 Grid Electricity Emission Factor Source
               </label>
-              <div className="w-full px-4 py-3 rounded-xl border border-sage-200 text-xs sm:text-sm bg-sage-50 font-medium text-forest-950">
-                India (Central Electricity Authority Baseline: 0.82 kg CO₂e/kWh)
-              </div>
+              <select
+                value={geography}
+                onChange={(e) => setGeography(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-sage-200 focus:outline-none focus:ring-2 focus:ring-mint-500 text-xs sm:text-sm bg-white font-medium"
+              >
+                <option value="India (CEA)">India (Central Electricity Authority Baseline: 0.82 kg CO₂e/kWh)</option>
+                <option value="USA (EPA)">USA (EPA eGRID National Average: 0.386 kg CO₂e/kWh)</option>
+                <option value="Global (IEA)">Global (IEA World Energy Factor: 0.475 kg CO₂e/kWh)</option>
+              </select>
               <span className="text-[11px] text-industrial-500 mt-1 block">
                 Adjusts electricity calculation factor across all dashboard views.
               </span>

@@ -26,7 +26,7 @@ import {
 import { useFactory } from '../context/FactoryContext';
 
 export const EmissionsPage: React.FC = () => {
-  const { factory, emissions } = useFactory();
+  const { factory, emissions, geography, setGeography } = useFactory();
 
   return (
     <div className="space-y-8 animate-in fade-in pb-12">
@@ -50,7 +50,15 @@ export const EmissionsPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <div className="bg-sage-50 border border-sage-200 rounded-2xl p-3 text-xs">
               <span className="text-industrial-500 font-medium block">Baseline Grid Factor:</span>
-              <span className="font-bold text-forest-950 mt-0.5 block">India (CEA Baseline: 0.82 kg/kWh)</span>
+              <select
+                value={geography}
+                onChange={(e) => setGeography(e.target.value)}
+                className="bg-transparent font-bold text-forest-950 focus:outline-none cursor-pointer mt-0.5"
+              >
+                <option value="India (CEA)">India (CEA Baseline: 0.82 kg/kWh)</option>
+                <option value="USA (EPA)">USA (EPA eGRID: 0.386 kg/kWh)</option>
+                <option value="Global (IEA)">Global (IEA Average: 0.475 kg/kWh)</option>
+              </select>
             </div>
           </div>
         </div>

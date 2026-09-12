@@ -17,6 +17,7 @@ import {
   generateRecommendationsDeterministic,
   simulateDeterministic
 } from '../services/fallbackEngine';
+import { fetchRecommendations } from '../services/api';
 
 interface FactoryContextType {
   factory: FactoryProfile;
@@ -87,10 +88,18 @@ export const FactoryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setEmissions(newCalc);
     const newHotspots = detectHotspotsDeterministic(newCalc);
     setHotspots(newHotspots);
-    const newRecs = generateRecommendationsDeterministic(newHotspots, factory.budget_inr);
-    setRecommendations(newRecs);
+    let isCurrent = true;
+    const fallbackRecommendations = generateRecommendationsDeterministic(newHotspots, factory.budget_inr);
+    setRecommendations(fallbackRecommendations);
+    void fetchRecommendations(factory.id, factory.budget_inr).then((backendRecommendations) => {
+      if (isCurrent) setRecommendations(backendRecommendations);
+    });
     const newSim = simulateDeterministic(factory.activity_data, simParams, geography);
     setSimResult(newSim);
+
+    return () => {
+      isCurrent = false;
+    };
   }, [factory.activity_data, factory.budget_inr, geography]);
 
   // Recalculate simulation when simParams change

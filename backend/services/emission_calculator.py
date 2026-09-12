@@ -2,12 +2,32 @@ import os
 import pandas as pd
 from typing import Dict, List, Any, Optional
 
-DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "emission_factors.csv")
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_PATH = os.path.join(BACKEND_DIR, "emission_system", "data", "emission_factors.csv")
 
 class EmissionCalculator:
     def __init__(self, data_path: Optional[str] = None):
         self.data_path = data_path or DATA_PATH
         self.factors_df = pd.read_csv(self.data_path)
+        if "factor_id" in self.factors_df.columns:
+            activity_by_factor = {
+                "IND_ELEC_GRID": "grid_electricity",
+                "FUEL_NG": "natural_gas",
+                "MATERIAL_COTTON_FIBER": "raw_cotton_textile",
+                "WASTE_ORGANIC_LANDFILL": "industrial_landfill_waste",
+            }
+            self.factors_df = self.factors_df.assign(
+                activity=self.factors_df["factor_id"].map(activity_by_factor),
+                emission_factor=self.factors_df["factor_kgco2e_per_unit"],
+                scope=self.factors_df["factor_id"].map({
+                    "IND_ELEC_GRID": "Scope 2",
+                    "FUEL_NG": "Scope 1",
+                    "MATERIAL_COTTON_FIBER": "Scope 3",
+                    "WASTE_ORGANIC_LANDFILL": "Scope 3",
+                }),
+                source_year=self.factors_df["source_year"].astype(str).str.extract(r"(\d{4})")[0].fillna("2026").astype(int),
+                confidence="High",
+            ).dropna(subset=["activity"])
 
     def get_factor(self, activity: str, geography: str = "India (CEA)") -> Optional[Dict[str, Any]]:
         subset = self.factors_df[(self.factors_df["activity"] == activity) & (self.factors_df["geography"] == geography)]

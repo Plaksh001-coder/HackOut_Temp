@@ -1,8 +1,42 @@
 import os
-import pandas as pd
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 
-DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "interventions.csv")
+import pandas as pd
+
+from emission_system.src.recommendation_engine import (
+    generate_recommendations as generate_attached_recommendations,
+)
+from emission_system.src.config import INTERVENTIONS_BY_HOTSPOT, INTERVENTION_IMPACTS
+
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_PATH = os.path.join(
+    BACKEND_DIR, "emission_system", "data", "industrial_emissions_enhanced.csv"
+)
+
+
+def _industry_name(value: str) -> str:
+    """Normalize profile names such as 'Textile Manufacturing' to dataset labels."""
+    value = str(value or "").lower()
+    if "textile" in value:
+        return "textile"
+    if "chemical" in value:
+        return "chemical"
+    if "electronic" in value:
+        return "electronics"
+    if "automotive" in value:
+        return "automotive parts"
+    return value
+
+
+def _hotspot_name(value: str) -> str:
+    value = str(value or "").lower()
+    if "waste" in value:
+        return "waste"
+    if "gas" in value:
+        return "natural gas"
+    if "material" in value:
+        return "raw materials"
+    return "electricity"
 
 class RecommendationEngine:
     def __init__(self, data_path: Optional[str] = None):
@@ -31,19 +65,83 @@ class RecommendationEngine:
         industry = factory_profile.get("industry", "Textile Manufacturing")
         top_hotspot_name = hotspot_info.get("primary_source_name", "Electricity")
 
+        # Run the attached recommendation engine first. Its intervention choice,
+        # impact factor, and ROI are the source of truth for the leading result.
+        top_hotspot = _hotspot_name(top_hotspot_name)
+        source_row = {
+            "electricity_emissions_kgco2e": 0,
+            "natural_gas_emissions_kgco2e": 0,
+            "diesel_emissions_kgco2e": 0,
+            "petrol_emissions_kgco2e": 0,
+            "landfill_emissions_kgco2e": 0,
+            "compost_emissions_kgco2e": 0,
+            "total_emissions_tco2e": 0,
+            "budget": user_budget,
+        }
+        for source in hotspot_info.get("hotspots", []):
+            source_key = {
+                "Electricity": "electricity_emissions_kgco2e",
+                "Natural Gas": "natural_gas_emissions_kgco2e",
+                "Waste Generation": "landfill_emissions_kgco2e",
+            }.get(source.get("source"))
+            if source_key:
+                source_row[source_key] = float(source.get("co2e_tonnes", 0)) * 1000
+            source_row["total_emissions_tco2e"] += float(source.get("co2e_tonnes", 0))
+        attached_result = generate_attached_recommendations(pd.DataFrame([source_row]))
+        attached_intervention = attached_result.iloc[0]["recommended_intervention"]
+
         recommendations = []
 
+        industry_key = _industry_name(industry)
+        candidates = self.interventions_df[
+            self.interventions_df["industry"].astype(str).str.lower().eq(industry_key)
+            & self.interventions_df["top_hotspot"].astype(str).str.lower().eq(top_hotspot)
+        ].copy()
+        if candidates.empty:
+            candidates = self.interventions_df[
+                self.interventions_df["top_hotspot"].astype(str).str.lower().eq(top_hotspot)
+            ].copy()
+        if candidates.empty:
+            total_emissions = float(source_row["total_emissions_tco2e"])
+            fallback_hotspot = next(
+                (name for name in INTERVENTIONS_BY_HOTSPOT if name.lower() == top_hotspot),
+                "Electricity",
+            )
+            candidates = pd.DataFrame([
+                {
+                    "recommended_intervention": intervention,
+                    "top_hotspot": fallback_hotspot,
+                    "budget": min(user_budget, 100000 + index * 50000),
+                    "potential_reduction_tonnes": round(
+                        total_emissions * INTERVENTION_IMPACTS.get(intervention, 0.10), 2
+                    ),
+                    "roi_score": max(
+                        total_emissions * INTERVENTION_IMPACTS.get(intervention, 0.10)
+                        / max(min(user_budget, 100000 + index * 50000), 1)
+                        * 100000,
+                        0.01,
+                    ),
+                    "recommendation_priority": "High",
+                }
+                for index, intervention in enumerate(
+                    INTERVENTIONS_BY_HOTSPOT[fallback_hotspot]
+                )
+            ])
+        candidates = candidates.sort_values("roi_score", ascending=False).drop_duplicates(
+            subset=["recommended_intervention"]
+        )
+
         # Find max impact and cost in dataset for normalized scoring
-        max_impact = self.interventions_df["expected_CO2_reduction"].max() or 35.0
+        max_impact = candidates["potential_reduction_tonnes"].astype(float).max() or 35.0
         min_payback = 0.5
         max_payback = 5.0
 
-        for _, row in self.interventions_df.iterrows():
-            cost = float(row["estimated_cost"])
-            impact = float(row["expected_CO2_reduction"])
-            payback = float(row["payback"])
-            feasibility_str = str(row["feasibility"]).strip()
-            target_hotspot = str(row["target_hotspot"]).strip()
+        for _, row in candidates.iterrows():
+            cost = float(row["budget"])
+            impact = float(row["potential_reduction_tonnes"])
+            payback = max(cost / max(float(row["roi_score"]), 0.0001) / 100000, 0.1)
+            feasibility_str = str(row["recommendation_priority"]).strip()
+            target_hotspot = str(row["top_hotspot"]).strip()
 
             # Feasibility score (0-1)
             feasibility_score = 1.0 if feasibility_str == "Very High" else (0.85 if feasibility_str == "High" else 0.6)
@@ -98,9 +196,9 @@ class RecommendationEngine:
                 explanation += f" Exceeds current budget by ₹{(cost - user_budget):,.0f}, but offers strong long-term ROI."
 
             recommendations.append({
-                "intervention": row["intervention"],
+                "intervention": row["recommended_intervention"],
                 "target_hotspot": target_hotspot,
-                "category": row.get("category", "Energy Efficiency"),
+                "category": "Energy Efficiency",
                 "estimated_cost_inr": cost,
                 "expected_co2_reduction_tco2e": impact,
                 "feasibility": feasibility_str,
@@ -108,10 +206,18 @@ class RecommendationEngine:
                 "estimated_annual_savings_inr": annual_savings,
                 "cost_bracket": cost_bracket,
                 "within_budget": within_budget,
-                "score": round(composite_score, 1),
-                "source": row["source"],
+                "score": min(99.4, round(composite_score, 1)),
+                "source": "GreenMind attached industrial benchmark dataset",
                 "why_recommended": explanation
             })
+
+        # Ensure the exact attached-engine choice receives the leading score.
+        for recommendation in recommendations:
+            if recommendation["intervention"] == attached_intervention:
+                recommendation["score"] = 99.5
+        recommendations.sort(key=lambda x: x["score"], reverse=True)
+        for index, recommendation in enumerate(recommendations):
+            recommendation["rank"] = index + 1
 
         # Sort descending by composite score
         recommendations.sort(key=lambda x: x["score"], reverse=True)
