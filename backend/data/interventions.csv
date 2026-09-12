@@ -1,0 +1,12 @@
+intervention,target_hotspot,applicable_industry,estimated_cost,expected_CO2_reduction,feasibility,payback,source,category
+LED + Smart Sensor Retrofit,Electricity,All,75000,8.2,High,0.9,Bureau of Energy Efficiency Industrial Benchmark,Energy Efficiency
+IE4 Super-Premium Motor Upgrade,Electricity,Manufacturing/Textiles,180000,16.5,High,1.8,UNIDO Industrial Energy Accelerator,Energy Efficiency
+Rooftop Solar PV Installation (25 kWp),Electricity,All,450000,32.8,Medium,3.4,MNRE Commercial Solar Benchmark,Renewable Energy
+Compressed Air Leak Repair & Variable Speed Drive,Electricity,Manufacturing/Textiles,95000,11.0,High,0.8,US DOE Industrial Technologies Program,Process Optimization
+Waste Heat Recovery for Boiler Pre-heating,Natural Gas,Textiles/Chemicals,220000,24.4,Medium,1.9,Alliance for an Energy Efficient Economy,Heat Recovery
+Boiler Economizer & Insulation Jackets,Natural Gas,All,120000,15.2,High,1.1,CII Carbon Footprint Mitigation Library,Heat Recovery
+Fabric Scrap In-house Shredding & Re-spinning,Waste,Textiles,150000,14.5,Medium,2.2,Global Textile Decarbonization Roadmap,Waste Reduction
+Organic Solvent & Water Effluent Recycling,Waste,Textiles/Chemicals,280000,18.0,Medium,2.6,Central Pollution Control Board Cleaner Production,Waste Reduction
+Certified Organic / Recycled Yarn Substitution,Raw Materials,Textiles,85000,19.2,High,1.4,Textile Exchange Material Change Index,Material Efficiency
+Automated Precision Laser Fabric Cutting,Raw Materials,Textiles/Garments,190000,12.8,High,1.7,Clean By Design Apparel Guide,Material Efficiency
+Power Factor Correction Capacitor Bank,Electricity,All,60000,6.5,High,0.7,BEE Industrial Energy Management,Energy Efficiency

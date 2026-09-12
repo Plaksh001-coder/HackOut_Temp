@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-sage-50 text-industrial-900 font-sans antialiased;
+    background-color: #F4F9F6;
+  }
+}
+
+/* Custom scrollbar for clean dashboard feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #EBF3EF;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #BDD6CB;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #10B981;
+}
+
+/* Range input styling for What-If Simulator sliders */
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type=range]:focus {
+  outline: none;
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+  background-color: #E2E8F0;
+  border-radius: 9999px;
+  height: 8px;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px;
+  background-color: #10B981;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 2px 6px rgba(6, 45, 38, 0.25);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background-color: #059669;
+}
+
+/* Print styles for Reports page */
+@media print {
+  aside, header, nav, .no-print {
+    display: none !important;
+  }
+  main, .print-container {
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  body {
+    background-color: #FFFFFF !important;
+  }
+}
