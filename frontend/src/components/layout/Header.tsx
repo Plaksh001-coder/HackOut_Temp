@@ -16,7 +16,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenOnboarding }) => {
-  const { factory, resetToDemo, geography, setGeography } = useFactory();
+  const { factory, resetToDemo } = useFactory();
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
@@ -48,26 +48,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenOnboardin
         </div>
       </div>
 
-      {/* Right side: Period selector, Geography, Reset demo button, Notifications, Profile */}
+      {/* Right side: Period selector, Reset demo button, Notifications, Profile */}
       <div className="flex items-center gap-3">
         {/* Analysis Period Badge */}
         <div className="hidden md:flex items-center gap-2 bg-sage-100/70 border border-sage-200 px-3 py-1.5 rounded-xl text-xs font-medium text-industrial-700">
           <Calendar className="w-3.5 h-3.5 text-forest-700" />
           <span>Annual Audit FY 2025-26</span>
-        </div>
-
-        {/* Geographic Emission Factor Selector */}
-        <div className="hidden sm:flex items-center gap-1.5 bg-sage-50 border border-sage-200 rounded-xl px-2.5 py-1.5 text-xs text-industrial-700">
-          <span className="text-industrial-400 font-medium">Grid:</span>
-          <select
-            value={geography}
-            onChange={(e) => setGeography(e.target.value)}
-            className="bg-transparent font-semibold text-forest-900 focus:outline-none cursor-pointer"
-          >
-            <option value="India (CEA)">India (CEA Baseline)</option>
-            <option value="USA (EPA)">USA (EPA eGRID)</option>
-            <option value="Global (IEA)">Global (IEA Average)</option>
-          </select>
         </div>
 
         {/* Quick Factory Onboard / Switch button */}
