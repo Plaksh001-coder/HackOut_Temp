@@ -7,6 +7,7 @@ from emission_system.src.recommendation_engine import (
     generate_recommendations as generate_attached_recommendations,
 )
 from emission_system.src.config import INTERVENTIONS_BY_HOTSPOT, INTERVENTION_IMPACTS
+from services.ml_engine import GreenMindML
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(
@@ -42,6 +43,7 @@ class RecommendationEngine:
     def __init__(self, data_path: Optional[str] = None):
         self.data_path = data_path or DATA_PATH
         self.interventions_df = pd.read_csv(self.data_path)
+        self.ml_engine = GreenMindML(self.data_path)
 
     def generate_recommendations(
         self,
@@ -230,6 +232,7 @@ class RecommendationEngine:
         total_recommended_investment = sum(r["estimated_cost_inr"] for r in recommendations[:4])
         total_potential_savings = sum(r["estimated_annual_savings_inr"] for r in recommendations[:4])
 
+        ml_prediction = self.ml_engine.predict(factory_profile, top_hotspot_name)
         return {
             "recommendations": recommendations,
             "top_three": recommendations[:3],
@@ -237,5 +240,6 @@ class RecommendationEngine:
             "recommended_investment_inr": total_recommended_investment,
             "potential_annual_savings_inr": total_potential_savings,
             "user_budget_inr": user_budget,
-            "weights_used": weights
+            "weights_used": weights,
+            "ml_prediction": ml_prediction,
         }

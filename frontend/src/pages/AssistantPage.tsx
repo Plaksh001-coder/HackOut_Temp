@@ -23,15 +23,7 @@ export const AssistantPage: React.FC = () => {
     {
       id: 'msg-welcome',
       sender: 'assistant',
-      content: `👋 Hello! I am the **GreenMind Assistant**.
-
-I help you analyze factory energy consumption, identify emission hotspots, and explore practical decarbonization actions.
-
-You can enter raw numbers in plain English or ask me questions about your facility:
-- *"Our factory uses 100,000 kWh electricity and 50,000 m³ gas"*
-- *"What is our biggest emission hotspot?"*
-- *"Suggest interventions for a ₹5,00,000 budget"*
-- *"Simulate a 20% cut in electricity"*`,
+      content: 'What would you like to explore about your factory?',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -213,31 +205,31 @@ You can enter raw numbers in plain English or ask me questions about your facili
       {/* Suggested Quick Prompt Chips */}
       <div className="px-4 py-2.5 bg-sage-50/60 border-t border-sage-200 flex items-center gap-2 overflow-x-auto text-xs">
         <span className="text-[11px] font-bold uppercase tracking-wider text-industrial-400 whitespace-nowrap">
-          Quick Prompts:
+          Recommended Questions:
         </span>
         <button
           onClick={() => handleQuickPrompt("What is our largest emission hotspot and why?")}
           className="px-3 py-1 rounded-full bg-white hover:bg-sage-100 border border-sage-200 text-industrial-700 whitespace-nowrap transition-all text-[11px] font-medium"
         >
-          🔍 Detect Largest Hotspot
+          What is our biggest emission hotspot?
         </button>
         <button
           onClick={() => handleQuickPrompt("What can we reduce within our ₹5,00,000 budget?")}
           className="px-3 py-1 rounded-full bg-white hover:bg-sage-100 border border-sage-200 text-industrial-700 whitespace-nowrap transition-all text-[11px] font-medium"
         >
-          💡 Recommendations for Budget
+          What can we reduce within our budget?
         </button>
         <button
           onClick={() => handleQuickPrompt("Simulate a 20% cut in electricity consumption")}
           className="px-3 py-1 rounded-full bg-white hover:bg-sage-100 border border-sage-200 text-industrial-700 whitespace-nowrap transition-all text-[11px] font-medium"
         >
-          ⚡ Simulate 20% Electricity Cut
+          What happens if we cut electricity by 20%?
         </button>
         <button
           onClick={() => handleQuickPrompt("Our factory uses 120,000 kWh electricity and 30,000 m3 natural gas")}
           className="px-3 py-1 rounded-full bg-white hover:bg-sage-100 border border-sage-200 text-industrial-700 whitespace-nowrap transition-all text-[11px] font-medium"
         >
-          📝 Ingest New Utility Numbers
+          Update our electricity and gas numbers
         </button>
       </div>
 

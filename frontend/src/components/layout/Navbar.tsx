@@ -1,5 +1,5 @@
 import React from 'react';
-import { Leaf, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { Leaf, ArrowRight, Sparkles } from 'lucide-react';
 
 interface NavbarProps {
   onOpenAuth: (mode: 'login' | 'signup') => void;
@@ -28,13 +28,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth, onTryDemo }) => {
         {/* Navigation Links */}
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-industrial-700">
           <a href="#how-it-works" className="hover:text-forest-800 transition-colors">How It Works</a>
-          <a href="#hotspots" className="hover:text-forest-800 transition-colors">Hotspots</a>
-          <a href="#simulator" className="hover:text-forest-800 transition-colors">What-If Simulator</a>
+          <a href="#capabilities" className="hover:text-forest-800 transition-colors">Capabilities</a>
           <a href="#usp" className="hover:text-forest-800 transition-colors">Our Edge</a>
-          <div className="flex items-center gap-1 text-xs text-forest-700 font-semibold bg-forest-50 px-2.5 py-1 rounded-full border border-forest-100">
-            <ShieldCheck className="w-3.5 h-3.5 text-mint-500" />
-            <span>HackOut'26 Finalist</span>
-          </div>
         </nav>
 
         {/* Action Buttons */}

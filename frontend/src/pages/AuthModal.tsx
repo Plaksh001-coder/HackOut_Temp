@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Sparkles, Lock, Mail, Factory, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useFactory } from '../context/FactoryContext';
+import { supabase } from '../services/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -19,14 +20,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [email, setEmail] = useState('plant.manager@greentex.com');
   const [password, setPassword] = useState('••••••••••••');
   const [name, setName] = useState('GreenTex Operator');
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const { resetToDemo } = useFactory();
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSuccess();
-    onClose();
+    setError('');
+    setNotice('');
+    setSubmitting(true);
+
+    try {
+      if (mode === 'forgot') {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (resetError) throw resetError;
+        setNotice('Password reset instructions were sent to your email.');
+        return;
+      }
+
+      if (mode === 'signup') {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: name } },
+        });
+        if (signUpError) throw signUpError;
+        if (!data.session) {
+          setNotice('Account created. Check your email to confirm your account, then sign in.');
+          setMode('login');
+          return;
+        }
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+      }
+
+      onSuccess();
+      onClose();
+    } catch (authError) {
+      setError(authError instanceof Error ? authError.message : 'Authentication failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleContinueDemo = () => {
@@ -82,6 +122,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <span className="bg-white px-3 text-industrial-400 font-medium">Or continue with email</span>
           </div>
         </div>
+
+        {error && <p className="mb-4 rounded-xl bg-coral-50 border border-coral-200 px-3 py-2 text-xs text-coral-700">{error}</p>}
+        {notice && <p className="mb-4 rounded-xl bg-mint-50 border border-mint-200 px-3 py-2 text-xs text-forest-800">{notice}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'signup' && (
@@ -140,11 +183,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           <button
             type="submit"
-            className="w-full mt-2 py-3 px-4 rounded-xl bg-forest-900 hover:bg-forest-850 text-white font-bold text-sm shadow-card transition-all"
+            disabled={submitting}
+            className="w-full mt-2 py-3 px-4 rounded-xl bg-forest-900 hover:bg-forest-850 disabled:opacity-60 text-white font-bold text-sm shadow-card transition-all"
           >
-            {mode === 'login' && 'Sign In to Dashboard'}
-            {mode === 'signup' && 'Create Account'}
-            {mode === 'forgot' && 'Send Reset Link'}
+            {submitting ? 'Please wait...' : mode === 'login' ? 'Sign In to Dashboard' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
           </button>
         </form>
 

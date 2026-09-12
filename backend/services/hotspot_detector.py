@@ -1,15 +1,23 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 class HotspotDetector:
-    def detect_hotspots(self, emission_results: Dict[str, Any]) -> Dict[str, Any]:
+    def __init__(self, ml_engine: Optional[Any] = None):
+        self.ml_engine = ml_engine
+
+    def detect_hotspots(
+        self,
+        emission_results: Dict[str, Any],
+        factory_profile: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         sources = emission_results.get("sources", [])
         if not sources:
-            return {
+            result = {
                 "top_hotspot": None,
                 "hotspots": [],
                 "summary": "No emission sources detected. Please input factory activity data.",
                 "actionable_priority": "Awaiting Data"
             }
+            return result
 
         # Sort sources in descending order of CO2e tonnes
         sorted_sources = sorted(sources, key=lambda x: x.get("co2e_tonnes", 0), reverse=True)
@@ -69,10 +77,15 @@ class HotspotDetector:
                 f"({top_hotspot['co2e_tonnes']} tCO₂e/year)."
             )
 
-        return {
+        result = {
             "top_hotspot": top_hotspot,
             "hotspots": hotspots,
             "summary": summary_msg,
             "total_evaluated_sources": len(hotspots),
             "primary_source_name": top_hotspot["source"] if top_hotspot else "None"
         }
+        if self.ml_engine and factory_profile:
+            result["ml_prediction"] = self.ml_engine.predict(
+                factory_profile, result["primary_source_name"]
+            )
+        return result

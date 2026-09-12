@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
+import { Session } from '@supabase/supabase-js';
 import {
   Menu,
   Bell,
   Calendar,
   Sparkles,
   RotateCcw,
-  UserCheck
+  UserCheck,
+  LogOut
 } from 'lucide-react';
 import { useFactory } from '../../context/FactoryContext';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
   onOpenOnboarding: () => void;
+  session: Session | null;
+  onSignOut: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenOnboarding }) => {
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenOnboarding, session, onSignOut }) => {
   const { factory, resetToDemo } = useFactory();
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -111,9 +115,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenOnboardin
             GT
           </div>
           <div className="hidden xl:block text-left">
-            <div className="text-xs font-semibold text-forest-950">Plant Engineer</div>
-            <div className="text-[10px] text-industrial-500">Facility #04</div>
+            <div className="text-xs font-semibold text-forest-950">{session?.user.user_metadata?.full_name || session?.user.email || 'Plant Engineer'}</div>
+            <div className="text-[10px] text-industrial-500">{session ? 'Authenticated user' : 'Demo session'}</div>
           </div>
+          {session && (
+            <button
+              onClick={onSignOut}
+              className="p-2 rounded-xl text-industrial-500 hover:text-coral-700 hover:bg-coral-50 transition-colors"
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </header>

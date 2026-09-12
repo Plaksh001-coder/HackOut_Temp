@@ -166,7 +166,7 @@ export async function sendChatMessage(
       };
     }
     return {
-      reply: "👋 Hello! I am the **GreenMind Assistant**. You can enter activity numbers (e.g. *'Our factory uses 100,000 kWh of electricity'*), ask for your top hotspots, or test What-If scenarios.",
+      reply: "Tell me what you want to analyze: energy use, emission hotspots, reduction actions, budget options, or a what-if scenario.",
       extracted_data: {}
     };
   }

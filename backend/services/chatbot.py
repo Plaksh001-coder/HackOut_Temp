@@ -1,6 +1,15 @@
 import os
 import re
+import json
+import logging
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 from typing import Dict, List, Any, Optional
+
+from dotenv import load_dotenv
+
+load_dotenv()
+logger = logging.getLogger(__name__)
 
 class GreenMindAssistant:
     def __init__(self, calculation_engine, recommendation_engine, hotspot_detector, simulator):
@@ -8,6 +17,76 @@ class GreenMindAssistant:
         self.recommender = recommendation_engine
         self.detector = hotspot_detector
         self.simulator = simulator
+        self.mistral_api_key = os.getenv("MISTRAL_API_KEY")
+        self.mistral_model = os.getenv("MISTRAL_MODEL", "mistral-small-latest")
+
+    def _ask_mistral(
+        self,
+        message: str,
+        context: Dict[str, Any],
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        authoritative_reply: Optional[str] = None,
+    ) -> Optional[str]:
+        """Return a conversational answer while keeping calculations server-authoritative."""
+        if not self.mistral_api_key:
+            return None
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are GreenMind Assistant for a factory sustainability platform. "
+                    "Answer clearly and practically in plain text. The user's facility context "
+                    "is supplied below. Never invent emissions, costs, or activity values; when "
+                    "a calculation is needed, ask the deterministic calculator to handle it. "
+                    "Keep replies concise and suggest one useful next step. Do not introduce "
+                    "yourself or repeat a generic welcome unless the user explicitly asks who "
+                    "you are.\n\n"
+                    f"Facility context: {json.dumps(context, default=str)}"
+                ),
+            }
+        ]
+        if authoritative_reply:
+            messages[0]["content"] += (
+                "\n\nThe following draft contains authoritative calculated results. Rewrite it to sound "
+                "natural and interactive, but preserve every number, unit, percentage, currency "
+                "amount, and factual result exactly. Do not add any new metrics.\n"
+                f"Authoritative draft:\n{authoritative_reply}"
+            )
+        for item in (conversation_history or [])[-6:]:
+            role = item.get("sender", item.get("role", "user"))
+            messages.append({
+                "role": "assistant" if role == "assistant" else "user",
+                "content": item.get("content", ""),
+            })
+        messages.append({"role": "user", "content": message})
+
+        payload = json.dumps({
+            "model": self.mistral_model,
+            "messages": messages,
+            "temperature": 0.2,
+            "max_tokens": 400,
+        }).encode("utf-8")
+        request = Request(
+            "https://api.mistral.ai/v1/chat/completions",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {self.mistral_api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+
+        try:
+            with urlopen(request, timeout=20) as response:
+                result = json.loads(response.read().decode("utf-8"))
+            return result["choices"][0]["message"]["content"].strip()
+        except HTTPError as error:
+            logger.warning("Mistral API request failed with HTTP %s: %s", error.code, error.reason)
+            return None
+        except (URLError, TimeoutError, KeyError, IndexError, json.JSONDecodeError) as error:
+            logger.warning("Mistral API request failed: %s", error)
+            return None
 
     def parse_natural_language_input(self, message: str) -> Dict[str, Any]:
         """
@@ -60,7 +139,7 @@ class GreenMindAssistant:
         # 1. Hotspot query
         if "hotspot" in text or "biggest emission" in text or "largest" in text:
             calc = self.calculator.calculate_emissions(context)
-            hotspots = self.detector.detect_hotspots(calc)
+            hotspots = self.detector.detect_hotspots(calc, context)
             top = hotspots.get("top_hotspot")
             if top:
                 reply = (
@@ -74,10 +153,27 @@ class GreenMindAssistant:
             else:
                 reply = "I haven't analyzed your full factory data yet. Would you like to enter your annual electricity and fuel consumption?"
 
-        # 2. Recommendation query
+        # 2. What-If Simulation query
+        elif "what-if" in text or "simulate" in text or "scenario" in text:
+            reduction_match = re.search(r"(\d+(?:\.\d+)?)\s*%\s*(?:cut|reduction|reduction in|less)", text)
+            reduction_pct = float(reduction_match.group(1)) if reduction_match else 20.0
+            sim = self.simulator.simulate(context, {"electricity_reduction_pct": reduction_pct, "renewable_shift_pct": 0})
+            reply = (
+                f"📊 **What-If Scenario Simulation ({reduction_pct:g}% Electricity Efficiency)**:\n\n"
+                f"- **Baseline Emissions**: {sim['baseline_total_tco2e']} tCO₂e/year\n"
+                f"- **Simulated Emissions**: {sim['scenario_total_tco2e']} tCO₂e/year\n"
+                f"- **Total Reduction**: {sim['co2_reduction_tco2e']} tCO₂e/year (**{sim['reduction_percentage']}%** reduction)\n"
+                f"- **Estimated Annual Savings**: ₹{sim['estimated_annual_savings_inr']:,.0f}/year\n"
+                f"- **Estimated Capex**: ₹{sim['estimated_implementation_cost_inr']:,.0f}\n"
+                f"- **Payback**: {sim['payback_years']} years\n\n"
+                f"You can test live interactive sliders on the dedicated **What-If Simulator** page."
+            )
+            structured_action = {"type": "SIMULATION_RESULT", "data": sim}
+
+        # 3. Recommendation query
         elif "recommend" in text or "action" in text or "reduce" in text or "cut" in text:
             calc = self.calculator.calculate_emissions(context)
-            hotspots = self.detector.detect_hotspots(calc)
+            hotspots = self.detector.detect_hotspots(calc, context)
             recs = self.recommender.generate_recommendations(hotspots, context)
             top_rec = recs["recommendations"][0] if recs["recommendations"] else None
             if top_rec:
@@ -93,21 +189,6 @@ class GreenMindAssistant:
                 structured_action = {"type": "VIEW_RECOMMENDATIONS", "data": recs}
             else:
                 reply = "Please share your factory's electricity and fuel consumption so I can compute ranked interventions for your budget."
-
-        # 3. What-If Simulation query
-        elif "what-if" in text or "simulate" in text or "scenario" in text:
-            sim = self.simulator.simulate(context, {"electricity_reduction_pct": 20, "renewable_shift_pct": 0})
-            reply = (
-                f"📊 **What-If Scenario Simulation (20% Electricity Efficiency)**:\n\n"
-                f"- **Baseline Emissions**: {sim['baseline_total_tco2e']} tCO₂e/year\n"
-                f"- **Simulated Emissions**: {sim['scenario_total_tco2e']} tCO₂e/year\n"
-                f"- **Total Reduction**: {sim['co2_reduction_tco2e']} tCO₂e/year (**{sim['reduction_percentage']}%** reduction)\n"
-                f"- **Estimated Annual Savings**: ₹{sim['estimated_annual_savings_inr']:,.0f}/year\n"
-                f"- **Estimated Capex**: ₹{sim['estimated_implementation_cost_inr']:,.0f}\n"
-                f"- **Payback**: {sim['payback_years']} years\n\n"
-                f"You can test live interactive sliders on the dedicated **What-If Simulator** page."
-            )
-            structured_action = {"type": "SIMULATION_RESULT", "data": sim}
 
         # 4. Data entry ingestion
         elif extracted:
@@ -135,15 +216,18 @@ class GreenMindAssistant:
 
         # 5. General / Welcome / Fallback
         else:
-            reply = (
-                "👋 Hello! I am the **GreenMind Assistant**. I help you calculate your factory's carbon footprint, "
-                "detect emission hotspots, and explore practical reduction interventions.\n\n"
-                "**How I can assist you today**:\n"
-                "1. Enter activity data in natural language (e.g., *'Our factory uses 100,000 kWh electricity and 50,000 m³ gas'*)\n"
-                "2. Ask *'What is our largest emission hotspot?'*\n"
-                "3. Ask *'What interventions fit our ₹5,00,000 budget?'*\n"
-                "4. Ask *'Simulate a 20% cut in electricity consumption'*"
+            reply = self._ask_mistral(message, context, conversation_history) or (
+                "Tell me what you want to analyze: energy use, emission hotspots, "
+                "reduction actions, budget options, or a what-if scenario."
             )
+
+        if structured_action and reply:
+            reply = self._ask_mistral(
+                message,
+                context,
+                conversation_history,
+                authoritative_reply=reply,
+            ) or reply
 
         return {
             "reply": reply,

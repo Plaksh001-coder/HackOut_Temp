@@ -19,12 +19,14 @@ import { useFactory } from '../context/FactoryContext';
 
 interface LandingPageProps {
   onOpenAuth: (mode: 'login' | 'signup') => void;
+  onAnalyzeFactory: () => void;
   onStartOnboarding: () => void;
   onTryDemo: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenAuth,
+  onAnalyzeFactory,
   onStartOnboarding,
   onTryDemo
 }) => {
@@ -62,7 +64,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {/* Action Buttons */}
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
-                onClick={onStartOnboarding}
+                onClick={onAnalyzeFactory}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 text-base font-semibold bg-forest-900 hover:bg-forest-850 text-white px-7 py-3.5 rounded-xl shadow-card hover:shadow-elevated transition-all"
               >
                 <span>Analyze My Factory</span>
@@ -175,7 +177,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* Key Value Propositions Grid */}
-      <section id="hotspots" className="py-20 bg-white border-b border-sage-200">
+      <section id="capabilities" className="py-20 bg-white border-b border-sage-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-xs font-bold uppercase tracking-wider text-forest-700 mb-2">Platform Capabilities</h2>

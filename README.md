@@ -54,8 +54,71 @@ Inspired by the clean, serene **Pollution-Free Environment** aesthetic:
 - Conversational data ingestion: understands natural language utility numbers (*"Our factory uses 100,000 kWh of electricity and 25,000 m³ of gas"*).
 - Extracts structured activity data into the deterministic model.
 - Explains hotspots, calculations, and recommendations without hallucination.
+- Uses Mistral as a conversational language layer when the configured API key and quota are available.
 
-### 6. Executive GHG Protocol Audit Report
+### 6. Hybrid Machine Learning Layer
+GreenMind uses supervised machine learning for predictive prioritization while keeping emissions and financial calculations deterministic.
+
+#### Dataset
+- `backend/emission_system/data/industrial_emissions_enhanced.csv`
+- 500 industrial factory records covering textile, electronics, chemical, steel, leather, pharmaceutical, food-processing, automotive-parts, and metal-fabrication facilities.
+- Features include industry, factory size, production, electricity, natural gas, diesel, raw materials, waste, budget, reduction target, and hotspot context.
+- Targets are `top_hotspot` and `recommended_intervention`.
+- Emission factors are stored separately in `backend/emission_system/data/emission_factors.csv` and include source, geography, year, unit, and methodology notes.
+
+#### Models
+- Two scikit-learn `RandomForestClassifier` pipelines.
+- `OneHotEncoder` processes categorical fields; numeric operational fields pass through directly.
+- The hotspot model predicts the dominant emission source.
+- The intervention model predicts a likely reduction action such as Solar Rooftop, Smart Metering, IE4 Motor, HVAC Optimization, or VFD Installation.
+- API responses include the predicted label and confidence score.
+
+#### Training and testing split
+- 400 records (80%) are used for training.
+- 100 unseen records (20%) are used for testing.
+- The split is stratified with `random_state=42`.
+- Five-fold stratified cross-validation is used for intervention-model validation.
+
+#### Evaluation results
+Hotspot model holdout results:
+
+| Metric | Result |
+| --- | ---: |
+| Accuracy | 1.0000 |
+| Precision | 1.0000 |
+| Recall | 1.0000 |
+| F1-score | 1.0000 |
+| Confusion matrix | `[[100]]` |
+
+The hotspot result must be interpreted carefully: all 500 current records are labelled `Electricity`, so the model has only one target class and cannot demonstrate multi-class hotspot discrimination yet.
+
+Intervention model results:
+
+| Metric | Result |
+| --- | ---: |
+| Test accuracy | 0.1400 (14.00%) |
+| Macro F1-score | 0.1319 |
+| Weighted F1-score | 0.1258 |
+| Five-fold CV accuracy | 0.0780 ± 0.0240 |
+| Five-fold CV macro F1 | 0.0753 ± 0.0284 |
+| Five-fold CV weighted F1 | 0.0776 ± 0.0284 |
+
+These results show that the current benchmark data has weak signal for predicting interventions. The deterministic recommendation engine therefore remains the authoritative recommendation path; ML predictions support prioritization and experimentation until more diverse, real labelled factory data is collected.
+
+#### Architecture principle
+```text
+Factory activity data
+  ↓
+Deterministic emission calculation ──→ authoritative CO₂e, cost, savings, payback
+  ↓
+ML hotspot/intervention predictions ──→ prioritization + confidence
+  ↓
+Mistral conversational explanation ──→ natural-language interaction
+```
+
+The ML models never replace the emission-factor calculation or alter authoritative financial results.
+
+### 7. Executive GHG Protocol Audit Report
 - One-click export and browser-printable executive audit document.
 - Contains facility profile, Scope 1/2/3 breakdown, hotspot audit trail, recommended roadmap, scenario projections, and methodology certification notes.
 
@@ -73,6 +136,7 @@ greenmind/
 │   │   ├── emission_calculator.py     # Deterministic calculation engine
 │   │   ├── hotspot_detector.py        # Hotspot ranker & analyzer
 │   │   ├── recommendation_engine.py   # Multi-factor weighted ranker
+│   │   ├── ml_engine.py                # Random Forest hotspot/intervention predictors
 │   │   ├── simulator.py               # Scenario financial & carbon engine
 │   │   └── chatbot.py                 # Structured NLP extraction & explainer
 │   ├── main.py                        # FastAPI REST API (18 routes)
@@ -92,7 +156,7 @@ greenmind/
 ```
 
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Lucide Icons, Recharts.
-- **Backend**: Python 3.14, FastAPI, Uvicorn, Pandas, Pydantic.
+- **Backend**: Python 3.14, FastAPI, Uvicorn, Pandas, Pydantic, scikit-learn.
 - **Dual Execution Resilience**: Seamless client-side deterministic fallback engine ensures 100% functionality during hackathon evaluations regardless of backend network availability.
 
 ---

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Session } from '@supabase/supabase-js';
 import { FactoryProvider, useFactory } from './context/FactoryContext';
 import { Layout } from './components/layout/Layout';
 import { LandingPage } from './pages/LandingPage';
@@ -12,11 +13,22 @@ import { WhatIfSimulatorPage } from './pages/WhatIfSimulatorPage';
 import { AssistantPage } from './pages/AssistantPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { supabase } from './services/supabase';
 
 const AppContent: React.FC = () => {
   const { activeTab, setActiveTab, resetToDemo } = useFactory();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [session, setSession] = useState<Session | null>(null);
+  const [afterAuth, setAfterAuth] = useState<'onboarding' | 'dashboard' | null>(null);
+
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   const handleOpenAuth = (mode: 'login' | 'signup') => {
     setAuthMode(mode);
@@ -28,8 +40,18 @@ const AppContent: React.FC = () => {
     setActiveTab('dashboard');
   };
 
+  const handleAnalyzeFactory = () => {
+    if (session) {
+      setActiveTab('onboarding');
+      return;
+    }
+    setAfterAuth('onboarding');
+    handleOpenAuth('login');
+  };
+
   const handleAuthSuccess = () => {
-    setActiveTab('dashboard');
+    setActiveTab(afterAuth || 'dashboard');
+    setAfterAuth(null);
   };
 
   // Render Landing Page
@@ -38,6 +60,7 @@ const AppContent: React.FC = () => {
       <>
         <LandingPage
           onOpenAuth={handleOpenAuth}
+          onAnalyzeFactory={handleAnalyzeFactory}
           onStartOnboarding={() => setActiveTab('onboarding')}
           onTryDemo={handleTryDemo}
         />
@@ -62,7 +85,14 @@ const AppContent: React.FC = () => {
 
   // Render Main App inside Layout with Sidebar & Header
   return (
-    <Layout onOpenOnboarding={() => setActiveTab('onboarding')}>
+    <Layout
+      onOpenOnboarding={() => setActiveTab('onboarding')}
+      session={session}
+      onSignOut={async () => {
+        await supabase.auth.signOut();
+        setActiveTab('landing');
+      }}
+    >
       {activeTab === 'dashboard' && <DashboardPage />}
       {activeTab === 'emissions' && <EmissionsPage />}
       {activeTab === 'hotspots' && <HotspotsPage />}

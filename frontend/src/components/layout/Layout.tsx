@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Session } from '@supabase/supabase-js';
 
 interface LayoutProps {
   children: React.ReactNode;
   onOpenOnboarding: () => void;
+  session: Session | null;
+  onSignOut: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, onOpenOnboarding }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, onOpenOnboarding, session, onSignOut }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -20,6 +23,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, onOpenOnboarding }) =>
         <Header
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onOpenOnboarding={onOpenOnboarding}
+          session={session}
+          onSignOut={onSignOut}
         />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {children}

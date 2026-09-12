@@ -10,6 +10,7 @@ from services.hotspot_detector import HotspotDetector
 from services.recommendation_engine import RecommendationEngine
 from services.simulator import WhatIfSimulator
 from services.chatbot import GreenMindAssistant
+from services.ml_engine import GreenMindML
 
 app = FastAPI(
     title="GreenMind Platform API",
@@ -28,7 +29,8 @@ app.add_middleware(
 
 # Initialize calculation & intelligence services
 calculator = EmissionCalculator()
-hotspot_detector = HotspotDetector()
+ml_engine = GreenMindML()
+hotspot_detector = HotspotDetector(ml_engine)
 recommendation_engine = RecommendationEngine()
 simulator = WhatIfSimulator()
 assistant = GreenMindAssistant(calculator, recommendation_engine, hotspot_detector, simulator)
@@ -217,7 +219,7 @@ def get_factory_hotspots(factory_id: str):
         raise HTTPException(status_code=404, detail="Factory not found")
     factory = factories_db[factory_id]
     emissions = calculator.calculate_emissions(factory["activity_data"])
-    hotspots = hotspot_detector.detect_hotspots(emissions)
+    hotspots = hotspot_detector.detect_hotspots(emissions, factory)
     return {
         "factory_id": factory_id,
         "factory_name": factory["name"],
@@ -230,7 +232,7 @@ def get_factory_hotspots(factory_id: str):
 def get_recommendations_custom(factory_id: Optional[str] = "demo-greentex", weights: Optional[Dict[str, float]] = None):
     factory = factories_db.get(factory_id, factories_db["demo-greentex"])
     emissions = calculator.calculate_emissions(factory["activity_data"])
-    hotspots = hotspot_detector.detect_hotspots(emissions)
+    hotspots = hotspot_detector.detect_hotspots(emissions, factory)
     return recommendation_engine.generate_recommendations(hotspots, factory, weights)
 
 @app.get("/api/recommendations/{factory_id}")
@@ -239,7 +241,7 @@ def get_factory_recommendations(factory_id: str):
         raise HTTPException(status_code=404, detail="Factory not found")
     factory = factories_db[factory_id]
     emissions = calculator.calculate_emissions(factory["activity_data"])
-    hotspots = hotspot_detector.detect_hotspots(emissions)
+    hotspots = hotspot_detector.detect_hotspots(emissions, factory)
     return recommendation_engine.generate_recommendations(hotspots, factory)
 
 # 4. What-If Simulation Endpoints
@@ -313,7 +315,7 @@ def generate_audit_report(factory_id: str):
         raise HTTPException(status_code=404, detail="Factory not found")
     factory = factories_db[factory_id]
     emissions = calculator.calculate_emissions(factory["activity_data"])
-    hotspots = hotspot_detector.detect_hotspots(emissions)
+    hotspots = hotspot_detector.detect_hotspots(emissions, factory)
     recs = recommendation_engine.generate_recommendations(hotspots, factory)
     sims = saved_simulations_db.get(factory_id, [])
 
