@@ -47,7 +47,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: name } },
+          options: {
+            data: { full_name: name },
+            emailRedirectTo: window.location.origin,
+          },
         });
         if (signUpError) throw signUpError;
         if (!data.session) {
