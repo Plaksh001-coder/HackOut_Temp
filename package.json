@@ -1,5 +1,8 @@
 {
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0"
+  },
+  "devDependencies": {
+    "@angular/cli": "^22.1.8"
   }
 }
